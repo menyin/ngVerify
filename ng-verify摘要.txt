@@ -1,0 +1,36 @@
+﻿form表单的verify-scope指令完成的任务：
+  1.$scope上绑定数据：
+     elems需验证的表单元素数组（在这些元素init时候自动添加进来）
+     subBtn提交表单按钮数组（在哪里添加？？）
+     tipStyle整个表单验证样式风格类型（通过form的verify-scope="..."获得）
+     submit提交方法，检查所有待验证表单元素是否验证不通过，有则将这些元素边框高亮
+  2.将$scope绑定在this.getscope方法暴露给其它指令引用
+  3.将$scope绑定在表单dom元素上的属性，即$element[0]._verifyScope
+  4.在form元素上添加novalidate="novalidate"属性
+
+input元素的ng-verify指令完成的任务：
+  1.定义pScope，即导入本元素所在form的$scope,
+  2.定义OPTS，即本元素ng-verify包含的用户验证配置
+  3.1.如该元素在父作用域内（即在input在form之内），则给本元素dom定义_verifyCheckElement方法，用于返回该元素验证结果，若不通过，边框高亮显示
+  3.2.如该元素不在父作用域内外（即在input在form之外），此时没有_verifyCheckElement方法，说明这是一个在form之外的提交按钮。但是会根据ng-verify="control:formName"来获取pScope
+  4.在该元素上定义ngVerify = {$scope: pScope,scope: scope,iAttrs: iAttrs,OPTS: OPTS}，包含父指令作用域，本作用域，本属性集合，本元素验证配置集合
+  5.用Init()初始化元素上的属性配置
+    radio如有设置ng-verify="least:xxx"，则设置OPTS.least=1
+    将对元素默认的一些配置和用户指令配置的信息联合起来放在OPTS
+    若元素有max和min配置，则增加maxlength和minlength属性
+    若元素为提交按钮，即有设置ng-verify="control:fornName"或是submit按钮，则将其添加到父作用域内的$scope.ngVerify.subBtn数组内。并为其注册单击事件执行作用域的$scope.ngVerify.submit方法
+    若元素非提交按钮，则添加到父作用域$scope.ngVerify.elems；为该元素插入错误提示dom；checkbox/radio、textarea、recheck指令等特殊处理；绑定元素验证事件；
+    在一些事件中对提交按钮设置disable
+
+*在bindVaild(iElm)方法里初始化了元素的相关事件：
+ 定义了元素可能触发验证的时机，包括元素的blur、change、keyup、数据模型监听$watch(iAttrs.ngModel）
+
+*验证过程：
+ 元素blur、change、keyup、ngModel改变相应事件触发blurTrigger()、changeTrigger()-->
+ 执行blurTrigger()或changeTrigger()，根据ISVALID(iElm)执行高亮边框和错误提示及控件禁用等(即tipMsg()、makeError()、DisableButtons())-->
+ 注意：1.当第一次验证时，在makeError()和某些地方里会将iElm.ngVerify.invalid置为true，从而实现首次验证不显示提示信息而只有高亮边框
+       2.ISVALID(iElm)返回当前元素是否验证通过bool值，并为元素绑定提示信息-->
+
+*扩展
+ 1.开发者自定义提示信息 
+ 2.扩展远程验证，用promise A+规范，在ISVALID里返回$q对象
