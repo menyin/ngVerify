@@ -8,20 +8,26 @@
  */
 
 if (typeof angular === 'undefined') {
-    throw new Error('ngVerify requires angular')
+    throw new Error('ngVerify requires angular');
 }
 
 (function () {
-
     var m = angular.module('ngVerify', []);
-    m.provider('$ngVerifySets',function(){
-        this.$get = function(){
-            return{
-                errMsg:this.errMsg||null
+    m.run(['$http',function ($http) {
+        m.$http = $http;
+    }]);
+    /***
+     *cny扩展出来的服务，使用期供应商即可配置错误提示信息文字
+     */
+    m.provider('$ngVerifySets', function () {
+        this.$get = function () {
+            return {
+                errMsg: this.errMsg || null
             }
         }
 
     });
+
     m.service('ngVerify', function () {
         return {
             /***
@@ -101,15 +107,19 @@ if (typeof angular === 'undefined') {
              * @param
              * some     String/DomObj    DomObj/id/name
              * errmsg   String           错误消息
+             * @description
+             * 原插件描述：传errmsg则强制设置错误，不传则强制设置五错。但实际却有bug
+             * 本人在code_001和code_001处做了修改改掉了它的bug
              */
             setError: function (some, errmsg) {
                 var el = getDom(some);
 
                 // 强制错误消息绑定在原生dom对象上
                 el._verifySetError = errmsg;
-
                 // 触发元素标记
-                el._verifyCheckElement(true);
+                //el._verifyCheckElement(true);//cny_del  code_001
+                el._verifyCheckElement(!!errmsg);//cny_add
+                el.setIelmNgVerifyInvalid(!!errmsg);//cny_add
             }
         }
     });
@@ -153,7 +163,7 @@ if (typeof angular === 'undefined') {
     })
 
     // 子指令，写在需要校验的表单元素和表单提交按钮上
-    m.directive('ngVerify', ['ngVerify','$ngVerifySets', function (ngVerify,$ngVerifySets) {
+    m.directive('ngVerify', ['ngVerify', '$ngVerifySets', function (ngVerify, $ngVerifySets) {
         return {
             require: "?^verifyScope",//
             scope: false,
@@ -170,11 +180,16 @@ if (typeof angular === 'undefined') {
                     if (pCtrl != undefined) { // 在作用域内
                         pScope = pCtrl.getscope();
 
+                        //在原生dom上暴露当前错误标记并返回验证结果的方法
                         // 给当前元素的 dom 绑定方法
                         // 检测当前 dom 是否验证通过
                         iElm[0]._verifyCheckElement = function (draw) {
-                                makeError(iElm, draw);
+                            makeError(iElm, draw);
                             return ISVALID(iElm);
+                        }
+                        //在原生dom上暴露修改iElm.ngVerify.invalid的方法cny_add code_002
+                        iElm[0].setIelmNgVerifyInvalid = function (invalid) {
+                            iElm.ngVerify.invalid=invalid;
                         }
 
                     } else { //在作用域外
@@ -202,7 +217,7 @@ if (typeof angular === 'undefined') {
                         scope: scope,
                         iAttrs: iAttrs,
                         OPTS: OPTS,//html元素书写的属性指令对应的配置
-                        $ngVerifySets:$ngVerifySets
+                        $ngVerifySets: $ngVerifySets
                     }
 
                     // 初始化元素
@@ -268,7 +283,7 @@ if (typeof angular === 'undefined') {
     /** 格式化配置参数
      * @param
         str     String    格式化前的配置参数
-        iElm    DomObj    标记出现错误的元素
+     iElm    DomObj    标记出现错误的元素
      * @return
         Object          格式化好的配置对象
      */
@@ -286,8 +301,8 @@ if (typeof angular === 'undefined') {
     }
 
     /** 初始化验证配置
-        @param  iElm    指令元素
-    */
+     @param  iElm    指令元素
+     */
     function Init(iElm) {
         var $scope = iElm.ngVerify.$scope;
         var iAttrs = iElm.ngVerify.iAttrs;
@@ -455,9 +470,9 @@ if (typeof angular === 'undefined') {
     }
 
     /** 绑定触发验证的事件
-        @param
-        iElm            obj    dom元素对象
-    */
+     @param
+         iElm            obj    dom元素对象
+     */
     function bindVaild(iElm) {
         var $scope = iElm.ngVerify.$scope;
         var scope = iElm.ngVerify.scope;
@@ -483,7 +498,6 @@ if (typeof angular === 'undefined') {
         function changeTrigger() {
             // 数据改变，校验一次，如果当前元素通过
             var isValid = ISVALID(iElm);
-
             if (isValid) {//如果当前元素验证通过
                 // 检测所有一次，设置表单提交按钮的禁用状态//因为有可能当前元素值改变会引发其它元素值改变
                 var re = checkAll($scope.ngVerify.elems);
@@ -495,7 +509,7 @@ if (typeof angular === 'undefined') {
                     if (recheckDoms) {
                         for (var i = 0; i < recheckDoms.length; i++) {
                             if (recheckDoms[i].val()) {
-                                makeError(recheckDoms[i], !ISVALID(recheckDoms[i]));
+                                makeError(recheckDoms[i], !ISVALID(recheckDoms[i]));//高亮边框
                             }
                         }
                     }
@@ -565,8 +579,8 @@ if (typeof angular === 'undefined') {
             // 处理该类型下，所有可能的辅助input类元素。一些第三方组件可能会在DIV内用input模拟用户输入
             iElm.ngVerify.triggerInput = angular.element(iElm[0].querySelector('input'));
             iElm.ngVerify.triggerInput.on('blur', function () {
-                    blurTrigger()
-                })
+                blurTrigger()
+            })
                 .on('change', function () {
                     changeTrigger()
                 })
@@ -590,8 +604,8 @@ if (typeof angular === 'undefined') {
 
         // 绑定触发验证的事件
         iElm.on(blurEvent, function () {
-                blurTrigger()
-            })
+            blurTrigger()
+        })
             .on(changeEvent, function () {
                 changeTrigger()
             })
@@ -604,10 +618,10 @@ if (typeof angular === 'undefined') {
     }
 
     /** 提示错误信息
-        @param
-        iElm    DomObj      dom元素对象
-        isShow  Boolean     显示隐藏提示
-    */
+     @param
+         iElm    DomObj      dom元素对象
+     isShow  Boolean     显示隐藏提示
+     */
     function tipMsg(iElm, isShow) {
         var OPTS = iElm.ngVerify.OPTS;
         if (OPTS.tipStyle == 0) { //传入了不提示tip的参数
@@ -639,14 +653,14 @@ if (typeof angular === 'undefined') {
     }
 
     /** 标记未通过验证的元素
-        @param
-        iElm        DomObj      需要标记的元素
-        draw        Boolean     是标记还是取消
-    */
+     @param
+         iElm        DomObj      需要标记的元素
+     draw        Boolean     是标记还是取消
+     */
     function makeError(iElm, draw) {
         var className = iElm.ngVerify.OPTS.errorClass; //用于标记的类名
         var parent = iElm.parent(); //可能需要标红的父容器
-
+　　　　
         iElm.ngVerify.invalid = draw;
 
         if (iElm[0].type == 'checkbox' || iElm[0].type == 'radio') {
@@ -686,7 +700,7 @@ if (typeof angular === 'undefined') {
      */
     function ISVALID(iElm) {
         var errMsgSet = iElm.ngVerify.$ngVerifySets.errMsg;
-        var isErrMsgSet= iElm.ngVerify.$ngVerifySets && iElm.ngVerify.$ngVerifySets.errMsg;
+        var isErrMsgSet = iElm.ngVerify.$ngVerifySets && iElm.ngVerify.$ngVerifySets.errMsg;
         //隐藏元素直接校验通过
         if (iElm[0].style.display == 'none') {
             return true;
@@ -715,9 +729,9 @@ if (typeof angular === 'undefined') {
             if (checked >= OPTS.least) {
                 return true;
             }
-            if (isErrMsgSet&&errMsgSet.least) {
-                OPTS.message = errMsgSet.min.replace(/(.*)(\{0\})(.*)/,'$1'+OPTS.least+'$3');
-            }else{
+            if (isErrMsgSet && errMsgSet.least) {
+                OPTS.message = errMsgSet.min.replace(/(.*)(\{0\})(.*)/, '$1' + OPTS.least + '$3');
+            } else {
                 OPTS.message = '至少选择' + OPTS.least + '项';
             }
             return false;
@@ -726,9 +740,9 @@ if (typeof angular === 'undefined') {
         // select元素验证
         if (iElm[0].localName == 'select') {
             if (iElm[0].selectedIndex === OPTS.option) {
-                if (isErrMsgSet&&errMsgSet.select) {
+                if (isErrMsgSet && errMsgSet.select) {
                     OPTS.message = errMsgSet.select;
-                }else{
+                } else {
                     OPTS.message = '请选择';
                 }
 
@@ -763,15 +777,15 @@ if (typeof angular === 'undefined') {
         if (OPTS.required && val == '') {
             // 注意：type='number' 输入字符e时，val仍然为空值，这时的空校验提示为tip1
             if (iAttrs.type == 'number') {
-                if (isErrMsgSet&&errMsgSet.number) {
+                if (isErrMsgSet && errMsgSet.number) {
                     OPTS.message = errMsgSet.number;
-                }else{
+                } else {
                     OPTS.message = '需输入数字'; //tip1
                 }
             } else {
-                if (isErrMsgSet&&errMsgSet.required) {
+                if (isErrMsgSet && errMsgSet.required) {
                     OPTS.message = errMsgSet.required;
-                }else{
+                } else {
                     OPTS.message = '不能为空' //tip2
                 }
 
@@ -783,17 +797,17 @@ if (typeof angular === 'undefined') {
 
         // 长度验证
         if (val.length < OPTS.min) {
-            if (isErrMsgSet&&errMsgSet.min) {
-                OPTS.message = errMsgSet.min.replace(/(.*)(\{0\})(.*)/,'$1'+OPTS.min+'$3');
-            }else{
+            if (isErrMsgSet && errMsgSet.min) {
+                OPTS.message = errMsgSet.min.replace(/(.*)(\{0\})(.*)/, '$1' + OPTS.min + '$3');
+            } else {
                 OPTS.message = '最少' + OPTS.min + '个字符'
             }
             return false;
         }
         if (val.length > OPTS.max) {
-            if (isErrMsgSet&&errMsgSet.max) {
-                OPTS.message = errMsgSet.max.replace(/(.*)(\{0\})(.*)/,'$1'+OPTS.max+'$3');
-            }else{
+            if (isErrMsgSet && errMsgSet.max) {
+                OPTS.message = errMsgSet.max.replace(/(.*)(\{0\})(.*)/, '$1' + OPTS.max + '$3');
+            } else {
                 OPTS.message = '最多' + OPTS.max + '个字符'
             }
             return false;
@@ -857,15 +871,15 @@ if (typeof angular === 'undefined') {
             // 验证正则
             if (val.match(pat) == null) {
                 if (OPTS.pattern) {//如果传入了正则，直接使用
-                    if (isErrMsgSet&&errMsgSet.pattern) {
-                        OPTS.message = errMsgSet.pattern.replace(/(.*)(\{0\})(.*)/,'$1'+pat.name+'$3');
-                    }else{
+                    if (isErrMsgSet && errMsgSet.pattern) {
+                        OPTS.message = errMsgSet.pattern.replace(/(.*)(\{0\})(.*)/, '$1' + pat.name + '$3');
+                    } else {
                         OPTS.message = pat.name + '格式错误';
                     }
-                }else{// 没有传入正则，按类型计算正则
-                    if (isErrMsgSet&&errMsgSet[iAttrs.type]) {
-                        OPTS.message =errMsgSet[iAttrs.type];
-                    }else{
+                } else {// 没有传入正则，按类型计算正则
+                    if (isErrMsgSet && errMsgSet[iAttrs.type]) {
+                        OPTS.message = errMsgSet[iAttrs.type];
+                    } else {
                         OPTS.message = pat.name + '格式错误';
                     }
                 }
@@ -878,14 +892,82 @@ if (typeof angular === 'undefined') {
         // recheck验证
         if (OPTS.recheck) {
             if (val !== iElm.ngVerify.recheck.getValue()) {
-                if (isErrMsgSet&&errMsgSet.recheck) {
+                if (isErrMsgSet && errMsgSet.recheck) {
                     OPTS.message = errMsgSet.recheck;
-                }else{
+                } else {
                     OPTS.message = '两次输入不一致'
                 }
                 return false;
             }
         }
+
+        //remote验证(此功能先不扩展,有需要去掉注释即可)
+        /*因原插件代码结构，原插件设计思路限制了做此扩展只能用同步方式ajax
+        * 但后来我直接用ngVerify.setError()强制设置错误和解除错误已达到异步
+        * */
+        /*if (OPTS.remote) {
+            var result=true;
+            /!*remote:{
+             method: 'GET',
+             url:'http://www.baidu.com/',
+             data: {id:111},
+             filter: function (resp) {
+             return !!resp.data;
+             }
+             }*!/
+
+            /!***
+             * 实际上是服务ngVerify里的setError
+             * 为不引用服务ngVerify才在这里多写
+             * @param element
+             * @param errmsg
+             *!/
+            function setError(some, errmsg){
+                var el = getDom(some);
+                // 强制错误消息绑定在原生dom对象上
+                el._verifySetError = errmsg;
+                // 触发元素标记
+                //el._verifyCheckElement(true);//cny_del  code_001
+                makeError(iElm, !!errmsg);//cny_add
+                //el._verifyCheckElement(!!errmsg);//cny_add 会造成ISVALID()循环引用
+                el.setIelmNgVerifyInvalid(!!errmsg);//cny_add
+            }
+            var defaultSets=OPTS.remote.method=='JSONP'?{'callback':'JSON_CALLBACK'}:{};//默认参数设置
+            var config = angular.extend({},OPTS.remote,defaultSets);
+            m.$http(config).then(
+                function (resp) {
+                    console.log(6666);
+                    console.log(resp);
+                    if (OPTS.remote.filter) {//经过过滤器
+                        resp = OPTS.remote.filter(resp);
+                    }
+                    if (typeof(resp) != 'boolean') {//保证resp是boolean类型
+                        throw new Error('Remote callback arg no is boolean type!');//抛出异常
+                    }
+                    if (!resp) {//验证不通过
+                        if (isErrMsgSet && errMsgSet.remote) {
+                            OPTS.message = errMsgSet.remote;
+                        } else {
+                            OPTS.message = '远程验证错误';
+                        }
+                        setError(iElm[0], OPTS.message);
+                    }else{//验证通过
+                        setError(iElm[0], false);
+                    }
+                    result = resp;
+                },
+                function (resp) {
+                    setError(iElm[0], false);
+                    throw new Error('Remote check service error.');//抛出异常
+                    result = true;
+                }
+            );
+            console.log(88888);
+            console.log(88888);
+
+            console.log(result);
+            return result;
+        }*/
 
         return true;
     }
@@ -909,4 +991,61 @@ if (typeof angular === 'undefined') {
     }
 
 
+    /***
+     * ajax函数封装
+     * @param opt
+     * @param {string}opt.type http连接的方式，包括POST和GET两种方式
+     * @param {string}opt.url 发送请求的url
+     * @param {boolean}opt.async 是否为异步请求，true为异步的，false为同步的
+     * @param {object}opt.data 发送的参数，格式为对象类型
+     * @param {function}opt.success ajax发送并接收成功调用的回调函数
+     * @example
+     *   ajax({
+     *     method: 'POST',
+     *     url: 'test.ashx',
+     *     data: {
+     *         name1: 'value1'
+     *     },
+     *     success: function (response) {
+     *        console.log(response)；
+     *     }
+     *   });
+     */
+    function ajax(opt) {
+        opt = opt || {};
+        opt.method = opt.method.toUpperCase() || 'POST';
+        opt.url = opt.url || '';
+        opt.async = opt.async || true;
+        opt.data = opt.data || null;
+        opt.success = opt.success || function () {
+            };
+        var xmlHttp = null;
+        if (XMLHttpRequest) {
+            xmlHttp = new XMLHttpRequest();
+        }
+        else {
+            xmlHttp = new ActiveXObject('Microsoft.XMLHTTP');
+        }
+        var params = [];
+        for (var key in opt.data) {
+            params.push(key + '=' + opt.data[key]);
+        }
+        var postData = params.join('&');
+        if (opt.method.toUpperCase() === 'POST') {
+            xmlHttp.open(opt.method, opt.url, opt.async);
+            xmlHttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded;charset=utf-8');
+            xmlHttp.send(postData);
+        }
+        else if (opt.method.toUpperCase() === 'GET') {
+            xmlHttp.open(opt.method, opt.url + '?' + postData, opt.async);
+            xmlHttp.send(null);
+        }
+        xmlHttp.onreadystatechange = function () {
+            if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+                opt.success(xmlHttp.responseText);
+            } else {
+                opt.success(xmlHttp.responseText);
+            }
+        };
+    }
 })()

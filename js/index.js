@@ -1,5 +1,4 @@
 (function(){
-
 // 使用ngVerify前，先依赖注入
 var m = angular.module('APP',['ngVerify','datePicker','ui.select']);
     m.config(function ($ngVerifySetsProvider) {
@@ -35,6 +34,39 @@ m.controller('testCtrl',function ($scope, $timeout, ngVerify) {
         var res = ngVerify.checkElement('#date');
         console.log(res);
     }); */
+    /***
+     * 对指定元素强制设置错误，优先级高于并且不会影响其它验证错误
+     * 此服务功能可用于扩展其它自定义验证。
+     */
+    $scope.testSetErro = function () {
+        ngVerify.setError('#phone', '强制设置一个错误');
+    };
+    /***
+     * 对指定元素强制取消强制设置的错误
+     */
+    $scope.testDelErro = function () {
+        ngVerify.setError('#phone');
+    };
+
+    /***
+     * 返回表单内所有验证不通过的元素，包括强制设置错误的元素
+     */
+    $scope.retrunErrElement = function () {
+        //返回所有未验证通过的表单元素，不标记
+        ngVerify.check('loginForm',function (errEls) {
+            console.log(123456);
+            console.log(errEls);
+            console.log(123456);
+        },false);
+    };
+
+    /***
+     *  检测一个元素是否验证通过，根据2参决定是否高亮边框
+     */
+    $scope.checkElement = function (isDraw) {
+      var result=  ngVerify.checkElement('#phone',isDraw);
+        alert(result);
+    };
 
     $scope.colors = [
       {name:'black'},

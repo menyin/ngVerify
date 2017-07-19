@@ -43,13 +43,22 @@
 			<div class="form-group">
 			    <label>Password reCheck </label>
 				<!-- 自定义字符长度 -->
-			    <input ng-verify="{recheck:'password'}" type="password" class="form-control" placeholder="3 to 10 chars">
+			    <input  ng-verify="{recheck:'password'}" type="password" class="form-control" placeholder="3 to 10 chars">
 			</div>
 			<div class="form-group">
 			<label>Number </label>
 			<!-- 默认支持的type类型 -->
-			<input ng-verify type="number" class="form-control" placeholder="input number">
+			<input ng-verify   type="number" class="form-control" placeholder="input number">
 		</div>
+			<input type="button" ng-click="testSetErro()" value="强制设置错误"/>
+			<input type="button" ng-click="testDelErro()" value="强制取消错误"/>
+			<input type="button" ng-click="retrunErrElement()" value="在强制设置错误后返回所有错误元素"/>
+			<input type="button" ng-click="checkElement()" value="在强制设置错误后检查该元素是否验证通过"/>
+			<div class="form-group">
+				<label>Test </label>
+				<!-- 默认支持的type类型 -->
+				<input  id="phone" ng-verify="required: false" type="text" class="form-control" placeholder="input test">
+			</div>
 			<div class="form-group">
 				<label>Phone </label>
 				<!-- 默认支持的type类型 -->
@@ -92,6 +101,24 @@
 			    <label>pattern </label>
 				<!-- 自定义正则,并自定义错误消息 -->
 			    <textarea ng-verify=" pattern:/[\u4e00-\u9fa5]/, required:false, errmsg:'需要输入中文' " type="text" class="form-control" placeholder="输入中文（非必填）"></textarea>
+			</div>
+
+
+			<div class="form-group">
+				<label>Remote </label>
+				<!-- 请求参数格式按照angular.$http请求格式-->
+				<input  ng-verify="{remote:{
+				 url:'http://apis.juhe.cn/idcard/index',
+                 method:'JSONP',
+                 params:{cardno:'420116199201203716',dtype:'json',key:'44d1cbaa1665151ec1514e685b68a764'},
+				 filter: function (resp) {resp.result.sex!='男';}
+				}}" type="text" class="form-control" placeholder="不能输入'男'">
+				<!--<input  ng-verify="{remote:{
+				 url:'remote_test_data.js',
+                 method:'GET',
+                 params:{},
+				 filter: function (resp) {return eval('('+resp+')').data!='男';}
+				}}" type="text" class="form-control" placeholder="不能输入'男'">-->
 			</div>
 			<div class="form-group">
 				<label>Third party plugins </label>
