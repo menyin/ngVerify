@@ -106,19 +106,17 @@
 
 			<div class="form-group">
 				<label>Remote </label>
+                <!--此集成的远程验证已放弃扩展，请直接用ngVerify.setError()方法来实现-->
 				<!-- 请求参数格式按照angular.$http请求格式-->
-				<input  ng-verify="{remote:{
+				<!-- params参数对象里会自动扩展当前input的值(如myName:123)-->
+<!--				<input name="sex" ng-verify="{remote:{
 				 url:'http://apis.juhe.cn/idcard/index',
                  method:'JSONP',
                  params:{cardno:'420116199201203716',dtype:'json',key:'44d1cbaa1665151ec1514e685b68a764'},
-				 filter: function (resp) {resp.result.sex!='男';}
-				}}" type="text" class="form-control" placeholder="不能输入'男'">
-				<!--<input  ng-verify="{remote:{
-				 url:'remote_test_data.js',
-                 method:'GET',
-                 params:{},
-				 filter: function (resp) {return eval('('+resp+')').data!='男';}
-				}}" type="text" class="form-control" placeholder="不能输入'男'">-->
+                 filter: function (resp){return resp.data.result.sex!='男';}
+                 }}" type="text" class="form-control" placeholder="不能输入'男'" />-->
+
+                <input id="sex" ng-verify  name="sex" type="text" class="form-control" placeholder="不能输入'男'" ng-model="remoteMode"/>
 			</div>
 			<div class="form-group">
 				<label>Third party plugins </label>

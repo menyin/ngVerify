@@ -13,7 +13,7 @@ if (typeof angular === 'undefined') {
 
 (function () {
     var m = angular.module('ngVerify', []);
-    m.run(['$http',function ($http) {
+    m.run(['$http', function ($http) {
         m.$http = $http;
     }]);
     /***
@@ -120,6 +120,13 @@ if (typeof angular === 'undefined') {
                 //el._verifyCheckElement(true);//cny_del  code_001
                 el._verifyCheckElement(!!errmsg);//cny_add
                 el.setIelmNgVerifyInvalid(!!errmsg);//cny_add
+                if (!errmsg) {
+                    var iElm=el.getiElm();
+                    if (iElm) {
+                        tipMsg(iElm, false);//不做提示
+                    }
+                }
+
             }
         }
     });
@@ -189,8 +196,12 @@ if (typeof angular === 'undefined') {
                         }
                         //在原生dom上暴露修改iElm.ngVerify.invalid的方法cny_add code_002
                         iElm[0].setIelmNgVerifyInvalid = function (invalid) {
-                            iElm.ngVerify.invalid=invalid;
+                            iElm.ngVerify.invalid = invalid;
                         }
+                        //用于向外界暴露iElm对象，在ngVerify.setError()中有用到//cny_add
+                        iElm[0].getiElm= function () {
+                            return iElm;
+                        };
 
                     } else { //在作用域外
 
@@ -660,7 +671,7 @@ if (typeof angular === 'undefined') {
     function makeError(iElm, draw) {
         var className = iElm.ngVerify.OPTS.errorClass; //用于标记的类名
         var parent = iElm.parent(); //可能需要标红的父容器
-　　　　
+
         iElm.ngVerify.invalid = draw;
 
         if (iElm[0].type == 'checkbox' || iElm[0].type == 'radio') {
@@ -903,10 +914,12 @@ if (typeof angular === 'undefined') {
 
         //remote验证(此功能先不扩展,有需要去掉注释即可)
         /*因原插件代码结构，原插件设计思路限制了做此扩展只能用同步方式ajax
-        * 但后来我直接用ngVerify.setError()强制设置错误和解除错误已达到异步
-        * */
-        /*if (OPTS.remote) {
-            var result=true;
+         * 另外远程用到的bll服务可能是具体业务框架的service，不好集成到该验证插件里。
+         * 但后来我直接用ngVerify.setError()强制设置错误和解除错误已达到异步
+         *
+         * */
+       /* if (OPTS.remote) {
+            var result = true;
             /!*remote:{
              method: 'GET',
              url:'http://www.baidu.com/',
@@ -922,7 +935,7 @@ if (typeof angular === 'undefined') {
              * @param element
              * @param errmsg
              *!/
-            function setError(some, errmsg){
+            function setError(some, errmsg) {
                 var el = getDom(some);
                 // 强制错误消息绑定在原生dom对象上
                 el._verifySetError = errmsg;
@@ -932,43 +945,57 @@ if (typeof angular === 'undefined') {
                 //el._verifyCheckElement(!!errmsg);//cny_add 会造成ISVALID()循环引用
                 el.setIelmNgVerifyInvalid(!!errmsg);//cny_add
             }
-            var defaultSets=OPTS.remote.method=='JSONP'?{'callback':'JSON_CALLBACK'}:{};//默认参数设置
-            var config = angular.extend({},OPTS.remote,defaultSets);
+
+            var defaultSets = {params:{}};//默认参数设置
+            if (OPTS.remote.method == 'JSONP') {
+                defaultSets.params = angular.extend({}, OPTS.remote.params, {'callback': 'JSON_CALLBACK'});
+            }
+            //扩展以当前input的name为key，当前input的值为value的参数
+            defaultSets.params[iElm[0].name] = angular.element(iElm[0]).val();
+
+            var config = angular.extend({}, OPTS.remote, defaultSets);
+            console.log(5555);
+            console.log(config);
             m.$http(config).then(
                 function (resp) {
                     console.log(6666);
                     console.log(resp);
+                    var resultData=true;
                     if (OPTS.remote.filter) {//经过过滤器
-                        resp = OPTS.remote.filter(resp);
+                        resultData = OPTS.remote.filter(resp.data);
+                    }else{
+                        resultData = resp.data;
                     }
-                    if (typeof(resp) != 'boolean') {//保证resp是boolean类型
+                    if (typeof(resultData) != 'boolean') {//保证resp是boolean类型
                         throw new Error('Remote callback arg no is boolean type!');//抛出异常
                     }
-                    if (!resp) {//验证不通过
+                    if (!resultData) {//验证不通过
                         if (isErrMsgSet && errMsgSet.remote) {
                             OPTS.message = errMsgSet.remote;
                         } else {
                             OPTS.message = '远程验证错误';
                         }
                         setError(iElm[0], OPTS.message);
-                    }else{//验证通过
+                    } else {//验证通过
                         setError(iElm[0], false);
                     }
-                    result = resp;
+                    result = resultData;
                 },
                 function (resp) {
+                    console.log(88888);
+                    console.log(resp);
+                    console.log(88888);
                     setError(iElm[0], false);
+
                     throw new Error('Remote check service error.');//抛出异常
                     result = true;
                 }
             );
             console.log(88888);
-            console.log(88888);
 
             console.log(result);
             return result;
         }*/
-
         return true;
     }
 

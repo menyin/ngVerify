@@ -22,8 +22,36 @@ var m = angular.module('APP',['ngVerify','datePicker','ui.select']);
             select:'配置提示：下拉框要选择哦',//针对select标签
         };
     });
-// 测试用控制器,调用公共方法的地方注入ngVerify
-m.controller('testCtrl',function ($scope, $timeout, ngVerify) {
+// 测试用控制器,调用公共方法的地方注入ng-verify
+m.controller('testCtrl',function ($scope, $timeout, ngVerify,$http) {
+    /*自定义远程验证,注意：必须给验证input加ngVerify属性*/
+    $scope.remoteMode = '';
+    $scope.$watch('remoteMode', function (newVal, oldVal, scope) {
+        $http({
+            url:'http://localhost:9794/',
+            method:'JSONP',
+            params:{callback:'JSON_CALLBACK',sex:newVal},
+        }).then(
+            function (resp) {
+                var resultData = resp.data;
+                if (typeof(resultData) != 'boolean') {//保证resp是boolean类型
+                    throw new Error('Remote callback arg no is boolean type!');//抛出异常
+                }
+                if (!resultData) {//验证不通过
+                    ngVerify.setError('#sex', '强制设置一个错误');
+                } else {//验证通过
+                    ngVerify.setError('#sex');
+                }
+            },
+            function (resp) {
+                ngVerify.setError('#sex');
+                throw new Error('Remote check service error.');//抛出异常
+            }
+        );
+    });
+
+
+
     /* angular.element(document).ready(function() {
     	console.log('页面加载完成，自动检测表单的验证，返回未验证通过的元素：');
     	ngVerify.check('loginForm',function (errEls) {
